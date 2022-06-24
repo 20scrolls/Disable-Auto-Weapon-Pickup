@@ -10,6 +10,7 @@
 
 Handle g_hPickupCookieT;
 Handle g_hPickupCookieCT;
+ConVar g_cServerWideForce;
 public Plugin myinfo = 
 {
 	name = "Disable Auto Weapon Pickup",
@@ -24,6 +25,7 @@ public void OnPluginStart()
 	RegConsoleCmd("sm_autopickup", Command_Autopickup);
 	g_hPickupCookieT = RegClientCookie("PickupCookieT", "Stores whether the client wants Autopickup or not for Terrorist side.", CookieAccess_Private);
 	g_hPickupCookieCT = RegClientCookie("PickupCookieCT", "Stores whether the client wants Autopickup or not for Counter-Terrorist side.", CookieAccess_Private);
+	g_cServerWideForce = CreateConVar("dap_serverwide_disable", "0", "Forces disable autopickup server wide.", FCVAR_PROTECTED);
 	
 	HookEvent("round_start", Event_RoundStart);
 	HookEvent("round_end", Event_RoundEnd);
@@ -32,7 +34,11 @@ public void OnPluginStart()
 
 public Action Command_Autopickup(int client, int args)
 {
-	ShowPickupMenu(client);
+	if(g_cServerWideForce.IntValue != 1)
+	{
+		ShowPickupMenu(client);
+	}
+	
 	return Plugin_Handled;
 }
 
@@ -128,31 +134,41 @@ public int autopickupmenu_handler(Menu menu, MenuAction action, int client, int 
 
 public Action CanUse(int client, int weapon)
 {
-	if(GetClientTeam(client) == CS_TEAM_T)
+	if(g_cServerWideForce.IntValue != 1)
 	{
-		char sCookieValue[12];
-		GetClientCookie(client, g_hPickupCookieT, sCookieValue, sizeof(sCookieValue));
-		
-		if(StrEqual(sCookieValue, "Disabled"))
+		if(GetClientTeam(client) == CS_TEAM_T)
 		{
-			int pressedbuttons = GetEntProp(client, Prop_Data, "m_afButtonPressed");
-			if(pressedbuttons & IN_USE)
-				return Plugin_Continue;
-			return Plugin_Handled;
+			char sCookieValue[12];
+			GetClientCookie(client, g_hPickupCookieT, sCookieValue, sizeof(sCookieValue));
+			
+			if(StrEqual(sCookieValue, "Disabled"))
+			{
+				int pressedbuttons = GetEntProp(client, Prop_Data, "m_afButtonPressed");
+				if(pressedbuttons & IN_USE)
+					return Plugin_Continue;
+				return Plugin_Handled;
+			}
+		}
+		else if(GetClientTeam(client) == CS_TEAM_CT)
+		{
+			char sCookieValue[12];
+			GetClientCookie(client, g_hPickupCookieCT, sCookieValue, sizeof(sCookieValue));
+			
+			if(StrEqual(sCookieValue, "Disabled"))
+			{
+				int pressedbuttons = GetEntProp(client, Prop_Data, "m_afButtonPressed");
+				if(pressedbuttons & IN_USE)
+					return Plugin_Continue;
+				return Plugin_Handled;
+			}
 		}
 	}
-	else if(GetClientTeam(client) == CS_TEAM_CT)
+	else
 	{
-		char sCookieValue[12];
-		GetClientCookie(client, g_hPickupCookieCT, sCookieValue, sizeof(sCookieValue));
-		
-		if(StrEqual(sCookieValue, "Disabled"))
-		{
-			int pressedbuttons = GetEntProp(client, Prop_Data, "m_afButtonPressed");
-			if(pressedbuttons & IN_USE)
-				return Plugin_Continue;
-			return Plugin_Handled;
-		}
+		int pressedbuttons = GetEntProp(client, Prop_Data, "m_afButtonPressed");
+		if(pressedbuttons & IN_USE)
+			return Plugin_Continue;
+		return Plugin_Handled;
 	}
 	return Plugin_Continue;
 }
